@@ -394,12 +394,12 @@ esac
 
 
 log "Creating CSR ..."
-export SUBJALTNAME="DNS:${DOMAINS[0]}"
+SUBJALTNAME="DNS:${DOMAINS[0]}"
 for (( i=1; i < ${#DOMAINS[@]}; i++ ))
 do
-	export SUBJALTNAME="${SUBJALTNAME},DNS:${DOMAINS[$i]}"
+	SUBJALTNAME="${SUBJALTNAME},DNS:${DOMAINS[$i]}"
 done
-openssl req -new -sha256 -key "${DOMAIN}/${DOMAIN}.key" -subj "/CN=${DOMAIN}" -reqexts SAN -config "$(dirname "${0}")/openssl.conf" > "${DOMAIN}/${DOMAIN}.csr"
+openssl req -new -sha256 -key "${DOMAIN}/${DOMAIN}.key" -subj "/CN=${DOMAIN}" -addext "subjectAltName = ${SUBJALTNAME}" > "${DOMAIN}/${DOMAIN}.csr"
 log "Done ${DOMAIN}/${DOMAIN}.csr"
 
 

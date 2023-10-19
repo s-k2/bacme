@@ -1,5 +1,10 @@
 # ChangeLog
 
+## [Fork-only]
+### Changed
+- don't use separate openssl.conf, users only need the script nothing else
+
+
 ## [Unreleased]
 ### Changed
 - case-insensitive parsing of location HTTP header field (#4)

@@ -15,14 +15,9 @@ Simplifications for example are:
   - both the account key and the domain key
   - in part this is also because of privacy considerations
 
-The script is intentionally made so by default it will not do anything on your
-server by itself. There is no need that you have to run it directly on your
-server (as root or otherwise). You keep control over the validation and
-installation process.
-A typical automated renewal process would be to let the script generate new
-private keys, automate the http validation by using a SSH key authenticated
-rsync with the --webroot option and installing the generated keys and
-certificates via e.g. an Ansible playbook.
+Contrary to upstream master this fork starts a hacky webserver based on socat
+and a few lines bash code. Thus you don't need anything more than this script
+and an unbound port 80 to get a new cert.
 
 The script is intended to be easy to understand but still allow the complete
 automatic generation of a certificate.
@@ -46,12 +41,10 @@ Options:
   -h, --help                This help
   -t, --test                Use staging API of Let's Encrypt for testing the script
   -v, --verbose             Verbose mode, print additional debug output
-  -w, --webroot DIRECTORY   Path to the DocumentRoot of your webserver. Can be a rsync
-                            compatible remote location like www@myserver:/srv/www/htdocs/.
 
 The first domain parameter should be your main domain name with the subdomains following after it.
 
-Example: ./bacme -e me@example.com -w www@server:/var/www/example/ example.com www.example.com
+Example: ./bacme -e me@example.com example.com www.example.com
 
 ```
 

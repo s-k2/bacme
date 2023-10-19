@@ -34,12 +34,10 @@ Options:
   -h, --help                This help
   -t, --test                Use staging API of Let's Encrypt for testing the script
   -v, --verbose             Verbose mode, print additional debug output
-  -w, --webroot DIRECTORY   Path to the DocumentRoot of your webserver. Can be a rsync
-                            compatible remote location like www@myserver:/srv/www/htdocs/.
 
 The first domain parameter should be your main domain name with the subdomains following after it.
 
-Example: $0 -e me@example.com -w root@server:/var/www/example/ example.com www.example.com
+Example: $0 -e me@example.com example.com www.example.com
 
 EOF
 }
@@ -145,10 +143,72 @@ api_request()
 	return 0
 }
 
+webserver()
+{
+        REQUEST_HANDLER_ARGS="'${@}'"
+        timeout 30 socat -d TCP-LISTEN:80,reuseaddr,fork "EXEC:/bin/timeout 10 ${0} --internal-webserver-handle-request ${REQUEST_HANDLER_ARGS}"
+}
+
+webserver_handle_request()
+{
+        CHALLENGE_TOKENS=()
+        CHALLENGE_URLS=()
+
+        while [ "$#" -gt 0 ];
+        do
+                CHALLENGE_URLS+=($1)
+                shift
+                CHALLENGE_TOKENS+=($1)
+                shift
+        done
+
+        read -r line
+        line=$(echo "$line" | tr -d '\r\n')
+
+        if [[ "$line" =~ ^([A-Z]+)[[:space:]]/(.*)[[:space:]](HTTP/1.[01])$ ]]
+        then
+                method=${BASH_REMATCH[1]}
+                resource_path=${BASH_REMATCH[2]}
+                http_version=${BASH_REMATCH[3]}
+        fi
+
+        for (( i=0 ; i < "${#CHALLENGE_URLS[@]}"; i++ ));
+        do
+                if [ "$resource_path" = ".well-known/acme-challenge/${CHALLENGE_URLS[$i]}" ];
+                then
+                        printf "HTTP/1.1 200 OK\r\n"
+                        printf "Content-Type: text/plain\r\n"
+                        printf "Content-Length: ${#CHALLENGE_TOKENS[$i]}\r\n"
+                        printf "Connection: close\r\n"
+                        printf "\r\n"
+                        echo -n "${CHALLENGE_TOKENS[$i]}"
+                        return 0
+                fi
+        done
+
+        printf "HTTP/1.1 404 Not Found\r\n"
+        printf "Content-Length: 0\r\n"
+        printf "Connection: close\r\n"
+        printf "\r\n"
+}
 
 ##############################################################################
 # main
 ##############################################################################
+
+if [ $1 = "--internal-webserver-handle-request" ];
+then
+        shift
+        webserver_handle_request $@
+        exit 0
+fi
+
+if [ $1 = "--internal-webserver" ];
+then
+        shift
+        webserver $@
+        exit 0
+fi
 
 
 # stop on error
@@ -188,10 +248,6 @@ do
 			;;
 		-v|--verbose)
 			VERBOSE="true"
-			;;
-		-w|--webroot)
-			shift
-			WEBROOT="${1}"
 			;;
 		*)
 			X="${ARG/-*/}"
@@ -343,18 +399,13 @@ then
 	)
 	log "Done"
 else
-	log "Execute in your DocumentRoot:"
-	echo
-	echo
-	echo "mkdir -p .well-known/acme-challenge"
-	for (( i=0; i < ${#DOMAINS[@]}; i++ ))
-	do
-		echo "echo '${KEYAUTHS[$i]}' > .well-known/acme-challenge/${CHALLENGE_TOKENS[$i]}"
-	done
-	echo
-	echo
-	log "Press [Enter] when done."
-	read -r
+        ZIPPED_TOKENS_AND_KEYS=""
+        for (( i=0; i < ${#DOMAINS[@]}; i++ ))
+        do
+                ZIPPED_TOKENS_AND_KEYS="$ZIPPED_TOKENS_AND_KEYS ${CHALLENGE_TOKENS[$i]} ${KEYAUTHS[$i]}"
+        done
+
+        webserver $ZIPPED_TOKENS_AND_KEYS &
 fi
 
 
@@ -443,12 +494,7 @@ then
 	)
 	log "Done"
 else
-	log "You can do now in your DocumentRoot:"
-	echo
-	echo
-	echo "rm -r .well-known"
-	echo
-	echo
+	log "Done"
 fi
 
 

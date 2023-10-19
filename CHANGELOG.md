@@ -2,6 +2,12 @@
 
 ## [Fork-only]
 ### Changed
+- replace external webserver-logic with a hacky webserver based on socat
+  why?
+  - this script is all you need: no extra server needs to be started
+  - socat is more likely to be available on minimal systems than a minimal
+    webserver (you might not have python, ...)
+  - no dependency on rsync anymore
 - don't use separate openssl.conf, users only need the script nothing else
 
 

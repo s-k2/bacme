@@ -460,6 +460,35 @@ REQUEST="{ \"csr\": \"${CSR}\" }"
 RESPONSE="$(api_request "${FINALIZE_URL}" "${REQUEST}")"
 STATUS="$(echo "${RESPONSE}" | flatstring | sed 's/^.*"status"\:\ "\([^"]*\)".*$/\1/')"
 debug "status=${STATUS}"
+
+if [ "${STATUS}" = "processing" ];
+then
+	log "Waiting for validation of order once again (asynchronous order finalization)..."
+	for attempt in 1 2 3 4 5
+	do
+		sleep $((4*attempt))
+		RESPONSE="$(api_request "${ORDER_URL}" "")"
+		STATUS="$(echo "${RESPONSE}" | flatstring | sed 's/^.*"status"\:\ "\([^"]*\)".*$/\1/')"
+		log " check ${attempt}: status=${STATUS}"
+		if [ "${STATUS}" != "ready" ];
+		then
+			break
+		fi
+	done
+	case "${STATUS}" in
+		valid)
+			log "Validation successful."
+			;;
+		invalid)
+			error "The server unsuccessfully validated your authorization challenge(s). Cannot continue."
+			exit 1
+			;;
+		*)
+			error "Timeout. Certificate order status is still \"${STATUS}\" instead of \"ready\". Something went wrong validating the authorization challenge(s). Cannot continue."
+			exit 1
+	esac
+fi
+
 if [ "${STATUS}" != "valid" ];
 then
 	debug "${RESPONSE}"

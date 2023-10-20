@@ -2,6 +2,11 @@
 
 ## [Fork-only]
 ### Changed
+- support asynchronous order finalization
+  the finalization-request may return with status processing. Check the
+  order again to become valid and get the certificate from this response.
+  More on:
+  <https://community.letsencrypt.org/t/enabling-asynchronous-order-finalization/193522/5>
 - replace external webserver-logic with a hacky webserver based on socat
   why?
   - this script is all you need: no extra server needs to be started
